@@ -1,12 +1,50 @@
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/router'
 import NewTweet from 'components/NewTweet'
+import Tweets from 'components/Tweets'
+import prisma from 'lib/prisma'
+import { getTweets } from 'lib/data.js'
+import LoadMore from 'components/LoadMore'
 
-export default function Home() {
+export default function Home({ initialTweets }) {
+
+  const [tweets, setTweets] = useState(initialTweets)
   const { data: session, status } = useSession()
+  const loading = status === 'loading'
+  const router = useRouter()
 
-  if (status === 'loading') {
-    return <p>...</p>
+  if (loading) {
+    return null
   }
 
-  return <div>{session ? <NewTweet /> : <p>You are not logged in 😞</p>}</div>
+  if (!session) {
+    router.push('/')
+  }
+
+  if (!session.user.name) {
+    router.push('/setup')
+  }
+
+  return (
+    <>
+      <NewTweet />
+      <Tweets tweets={tweets} />
+      <LoadMore tweets={tweets} setTweets={setTweets} />
+    </>
+  )
+
+
+
+}
+
+export async function getServerSideProps() {
+  let tweets = await getTweets(prisma, 2)
+  tweets = JSON.parse(JSON.stringify(tweets))
+
+  return {
+    props: {
+      initialTweets: tweets,
+    },
+  }
 }
